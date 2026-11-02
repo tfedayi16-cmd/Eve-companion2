@@ -1,0 +1,108 @@
+export const theme = {
+  colors: {
+    // Warm rose-blush primary ramp
+    primary: {
+      50: '#FFF5F4',
+      100: '#FFE8E4',
+      200: '#FCD3CC',
+      300: '#F7B0A4',
+      400: '#EF836F',
+      500: '#E55A43',
+      600: '#D23F2A',
+      700: '#AE2F20',
+      800: '#7F241A',
+      900: '#4D1813',
+    },
+    // Soft amber accent
+    accent: {
+      50: '#FFF9EE',
+      100: '#FFEFCC',
+      200: '#FFDF99',
+      300: '#FFC85C',
+      400: '#FFAC2E',
+      500: '#F08F12',
+      600: '#C26D08',
+      700: '#8E4F09',
+      800: '#5A3205',
+      900: '#331C03',
+    },
+    // Sky secondary for call UI
+    secondary: {
+      50: '#F0F8FF',
+      100: '#E0F0FE',
+      200: '#BAE0FD',
+      300: '#7CC7FB',
+      400: '#36A9F6',
+      500: '#0C8FE7',
+      600: '#0270C4',
+      700: '#03569D',
+      800: '#07497E',
+      900: '#0B3F68',
+    },
+    success: {
+      500: '#16A34A',
+      600: '#15803D',
+    },
+    warning: {
+      500: '#F59E0B',
+      600: '#D97706',
+    },
+    error: {
+      500: '#EF4444',
+      600: '#DC2626',
+    },
+    // Neutral warm grays
+    neutral: {
+      0: '#FFFFFF',
+      50: '#FAF9F8',
+      100: '#F3F1EF',
+      200: '#E5E1DD',
+      300: '#D2CCC6',
+      400: '#A89F97',
+      500: '#7A7068',
+      600: '#5C544D',
+      700: '#443E39',
+      800: '#2E2A27',
+      900: '#1A1715',
+      950: '#100E0D',
+    },
+  },
+  fonts: {
+    regular: 'Outfit_400Regular',
+    medium: 'Outfit_500Medium',
+    semibold: 'Outfit_600SemiBold',
+    bold: 'Outfit_700Bold',
+    extrabold: 'Outfit_800ExtraBold',
+  },
+  spacing: {
+    xs: 4,
+    sm: 8,
+    md: 16,
+    lg: 24,
+    xl: 32,
+    xxl: 48,
+  },
+  radius: {
+    sm: 8,
+    md: 14,
+    lg: 20,
+    xl: 28,
+    full: 9999,
+  },
+  shadow: {
+    card: {
+      shadowColor: '#1A1715',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 3,
+    },
+    float: {
+      shadowColor: '#1A1715',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.16,
+      shadowRadius: 24,
+      elevation: 8,
+    },
+  },
+} as const;
