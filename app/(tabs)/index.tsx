@@ -12,7 +12,7 @@ import {
   Image,
   Alert,
 } from 'react-native';
-import { Send, Sparkles, Image as ImageIcon, Wand2 } from 'lucide-react-native';
+import { Send, Sparkles, Image as ImageIcon, Wand2, Volume2 } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -29,7 +29,7 @@ import { EveAvatar } from '@/components/EveAvatar';
 import { useEveChat, type ChatMessage } from '@/hooks/useEveChat';
 import { useCharacters } from '@/hooks/useCharacters';
 import { supabase } from '@/lib/supabase';
-import { generateImage } from '@/lib/ai';
+import { generateImage, synthesizeSpeech } from '@/lib/ai';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/hooks/useSettings';
 import { theme } from '@/constants/theme';
@@ -63,6 +63,8 @@ export default function ChatScreen() {
   const [input, setInput] = useState('');
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
   // Open the most recent conversation with the active companion
@@ -167,6 +169,33 @@ export default function ChatScreen() {
     }
   };
 
+  const handleSpeak = async (messageId: string, text: string) => {
+    if (!text?.trim()) return;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (speakingId === messageId) {
+      setSpeakingId(null);
+      return;
+    }
+    setSpeakingId(messageId);
+    try {
+      const { audio, format } = await synthesizeSpeech(text);
+      if (Platform.OS === 'web') {
+        const mime = format === 'mp3' ? 'audio/mpeg' : `audio/${format}`;
+        const el = new Audio(`data:${mime};base64,${audio}`);
+        audioRef.current = el;
+        el.onended = () => setSpeakingId(null);
+        el.onerror = () => setSpeakingId(null);
+        await el.play();
+      }
+    } catch (err: any) {
+      Alert.alert('Voice failed', err.message ?? 'Could not synthesize speech.');
+      setSpeakingId(null);
+    }
+  };
+
   const isBusy = isTyping || generating || loading;
 
   if (loading || resolvingHistory) {
@@ -201,7 +230,15 @@ export default function ChatScreen() {
         ref={listRef}
         data={messages}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <MessageBubble message={item} avatarUri={activeCharacter?.avatar_url} />}
+        renderItem={({ item }) => (
+          <MessageBubble
+            message={item}
+            avatarUri={activeCharacter?.avatar_url}
+            canSpeak={!isBusy && !!item.text}
+            isSpeaking={speakingId === item.id}
+            onSpeak={() => handleSpeak(item.id, item.text)}
+          />
+        )}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={null}
@@ -292,18 +329,40 @@ export default function ChatScreen() {
   );
 }
 
-function MessageBubble({ message, avatarUri }: { message: ChatMessage; avatarUri?: string | null }) {
+function MessageBubble({
+  message,
+  avatarUri,
+  canSpeak,
+  isSpeaking,
+  onSpeak,
+}: {
+  message: ChatMessage;
+  avatarUri?: string | null;
+  canSpeak: boolean;
+  isSpeaking: boolean;
+  onSpeak: () => void;
+}) {
   const isUser = message.role === 'user';
   return (
     <View style={[styles.bubbleRow, isUser && styles.bubbleRowUser]}>
       {!isUser && <EveAvatar uri={avatarUri} size={32} online={false} />}
-      <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleEve]}>
-        {message.image_url && (
-          <Image source={{ uri: message.image_url }} style={styles.messageImage} resizeMode="cover" />
+      <View style={styles.bubbleCol}>
+        <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleEve]}>
+          {message.image_url && (
+            <Image source={{ uri: message.image_url }} style={styles.messageImage} resizeMode="cover" />
+          )}
+          {message.text ? (
+            <Text style={[styles.bubbleText, isUser && styles.bubbleTextUser]}>{message.text}</Text>
+          ) : null}
+        </View>
+        {!isUser && canSpeak && (
+          <TouchableOpacity style={styles.speakBtn} onPress={onSpeak} activeOpacity={0.7}>
+            <Volume2 size={16} color={isSpeaking ? theme.colors.primary[400] : theme.colors.neutral[500]} strokeWidth={2} />
+            <Text style={[styles.speakBtnText, isSpeaking && { color: theme.colors.primary[400] }]}>
+              {isSpeaking ? 'Speaking…' : 'Speak'}
+            </Text>
+          </TouchableOpacity>
         )}
-        {message.text ? (
-          <Text style={[styles.bubbleText, isUser && styles.bubbleTextUser]}>{message.text}</Text>
-        ) : null}
       </View>
     </View>
   );
@@ -361,7 +420,8 @@ const styles = StyleSheet.create({
   listContent: { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.md, flexGrow: 1 },
   bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, maxWidth: '100%' },
   bubbleRowUser: { justifyContent: 'flex-end' },
-  bubble: { maxWidth: '78%', paddingHorizontal: 16, paddingVertical: 12, borderRadius: theme.radius.lg },
+  bubbleCol: { maxWidth: '78%', gap: 4 },
+  bubble: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: theme.radius.lg },
   bubbleEve: { backgroundColor: theme.colors.neutral[800], borderBottomLeftRadius: 6 },
   bubbleUser: { backgroundColor: theme.colors.primary[500], borderBottomRightRadius: 6 },
   bubbleText: { fontFamily: theme.fonts.regular, fontSize: 15.5, lineHeight: 22, color: theme.colors.neutral[100] },
@@ -438,4 +498,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendButtonDisabled: { backgroundColor: theme.colors.neutral[700] },
+  speakBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'flex-start' },
+  speakBtnText: { fontFamily: theme.fonts.regular, fontSize: 12, color: theme.colors.neutral[500] },
 });

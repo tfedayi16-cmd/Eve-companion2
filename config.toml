@@ -1,6 +1,0 @@
-[functions.ai-chat]
-verify_jwt = false
-[functions.ai-vision]
-verify_jwt = false
-[functions.ai-image]
-verify_jwt = false

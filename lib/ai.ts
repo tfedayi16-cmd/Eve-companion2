@@ -85,3 +85,23 @@ export async function generateImage(
   const data = await response.json();
   return { imageUrl: data.image_url ?? null, message: data.message ?? 'Image generated.' };
 }
+
+export async function synthesizeSpeech(text: string, voiceId?: string): Promise<{ audio: string; format: string }> {
+  const { data: session } = await supabase.auth.getSession();
+  const token = session?.session?.access_token;
+
+  const response = await fetch(`${EDGE_FUNCTION_BASE}/eleven-tts`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+    },
+    body: JSON.stringify({ text, voice_id: voiceId }),
+  });
+
+  if (!response.ok) throw new Error(`TTS request failed (${response.status})`);
+  const data = await response.json();
+  if (data.error) throw new Error(data.error);
+  return { audio: data.audio, format: data.format ?? 'mp3' };
+}

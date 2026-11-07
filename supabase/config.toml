@@ -4,3 +4,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.ai-image]
 verify_jwt = false
+[functions.eleven-tts]
+verify_jwt = false

@@ -12,6 +12,10 @@
     "ai-vision": {
       "hasChanged": false,
       "hash": "290a0baf0b457fe28a504e0b8d12213acde42c42773759f8dd46db5c7daa13b6"
+    },
+    "eleven-tts": {
+      "hasChanged": false,
+      "hash": "d91e968005407b0881a1262dc5efc39b4c02e9ab7942d749eca63379c4512246"
     }
   }
 }
