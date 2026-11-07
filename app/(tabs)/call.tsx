@@ -178,8 +178,16 @@ export default function CallScreen() {
     recognition.onerror = (event: any) => {
       console.warn('Speech recognition error:', event.error);
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        setError('Microphone access denied. Please allow microphone permissions in your browser.');
-        updateCallState('listening');
+        const inIframe = typeof window !== 'undefined' && window.self !== window.top;
+        if (inIframe) {
+          setError(
+            'Microphone is blocked in this embedded preview. Open the published HTTPS URL in a new tab to use voice calls.'
+          );
+          updateCallState('idle');
+        } else {
+          setError('Microphone access denied. Please allow microphone permissions in your browser settings and try again.');
+          updateCallState('listening');
+        }
       } else if (event.error === 'no-speech' && callStateRef.current === 'listening') {
         setTimeout(() => {
           if (isMountedRef.current && callStateRef.current === 'listening' && !mutedRef.current) {
@@ -252,10 +260,11 @@ export default function CallScreen() {
     conversationHistoryRef.current = [];
     updateCallState('connecting');
 
-    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.mediaDevices) {
+    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+      const inIframe = typeof window !== 'undefined' && window.self !== window.top;
+
       navigator.mediaDevices.getUserMedia({ audio: true })
         .then((stream) => {
-          // Keep the stream alive so the browser doesn't release the mic
           streamRef.current = stream;
           setTimeout(() => {
             updateCallState('listening');
@@ -263,15 +272,31 @@ export default function CallScreen() {
           }, 1500);
         })
         .catch((err) => {
-          console.warn('Mic permission error:', err?.message);
-          setError('Microphone access denied. Please allow microphone permissions and try again.');
+          console.warn('Mic permission error:', err?.name, err?.message);
+          const errName = err?.name ?? '';
+
+          if (inIframe || errName === 'NotAllowedError' || errName === 'SecurityError') {
+            if (inIframe) {
+              setError(
+                'Microphone is blocked in this embedded preview. Open the published HTTPS URL in a new tab to use voice calls — browsers only allow microphone access on a top-level page, not inside an iframe.'
+              );
+            } else {
+              setError(
+                'Microphone permission was denied. Open your browser settings, allow microphone access for this site, then try again.'
+              );
+            }
+          } else if (errName === 'NotFoundError' || errName === 'DevicesNotFoundError') {
+            setError('No microphone found. Connect a microphone and try again.');
+          } else if (errName === 'NotReadableError' || errName === 'TrackStartError') {
+            setError('Your microphone is being used by another app. Close it and try again.');
+          } else {
+            setError('Could not access the microphone. ' + (err?.message ?? 'Please try again.'));
+          }
           updateCallState('idle');
         });
     } else {
-      setTimeout(() => {
-        updateCallState('listening');
-        startListening();
-      }, 1500);
+      setError('Voice calls require a browser with microphone support. Please open the published URL in Chrome or Edge.');
+      updateCallState('idle');
     }
   };
 
